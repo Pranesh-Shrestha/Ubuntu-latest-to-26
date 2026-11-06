@@ -1,0 +1,59 @@
+name: PSE Docker OS coverage
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: ${{ matrix.base }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        base:
+          - ubuntu:18.04
+          - ubuntu:20.04
+          - ubuntu:22.04
+          - ubuntu:24.04
+          - ubuntu:26.04
+          - debian:10
+          - debian:11
+          - debian:12
+          - debian:13
+          - centos:7
+          - redhat/ubi8
+          - redhat/ubi9
+          - rockylinux:8
+          - rockylinux:9
+          - amazonlinux:2
+          - amazonlinux:2023
+          - alpine:latest
+          - fedora:latest
+          - python:3.12
+          - python:3.12-slim-bookworm
+          - python:3.12-alpine
+          - python:3.9.5
+          - node:12
+
+    steps:
+      # ============= InvisiRisk Setup =============
+      - name: Setup PSE
+        uses: invisirisk/pse-action@latest
+        with:
+          api_url: "https://app.invisirisk.com"
+          app_token: ${{ secrets.IR_API_KEY }}
+
+      # ============= InvisiRisk Setup End =============
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build on ${{ matrix.base }}
+        run: |
+          docker build --no-cache --progress=plain \
+            -f Dockerfile.os-test \
+            --build-arg BASE_IMAGE=${{ matrix.base }} \
+            --build-arg BUILDKIT_SYNTAX=public.ecr.aws/w3c0c0n7/invisirisk/baf-buildkit:latest \
+            --secret id=pse-ca,src=/etc/ssl/certs/pse.pem \
+            --build-arg PSE_PROXY=http://${PSE_PROXY_IP}:3128 \
+            -t os-test:${{ strategy.job-index }} .
